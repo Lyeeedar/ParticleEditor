@@ -17,9 +17,11 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -45,6 +47,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Json;
 import com.lyeeedar.Graphics.ParticleEffects.ParticleEffect;
 import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter;
@@ -91,26 +94,113 @@ public class Main extends JFrame {
 	public void right()
 	{
 		right.removeAll();
-		right.setLayout(new GridLayout(2, 1));
+		right.setLayout(new GridLayout(1, 1));
 		
 		JPanel panel = new JPanel();
-		panel.setBorder(BorderFactory.createTitledBorder("Emitters"));
+		panel.setLayout(new GridBagLayout());
 		
-		
-		right.add(panel);
+		JPanel emitters = createEmitterSelection();
+		emitters.setBorder(BorderFactory.createTitledBorder("Emitters"));
 		
 		JPanel options = createRightOptions();
 		if (options == null) options = new JPanel();
 		options.setBorder(BorderFactory.createTitledBorder("Emitter Properties"));
-		right.add(options);
+		
+		GridBagConstraints gc = new GridBagConstraints();
+		gc.fill = GridBagConstraints.BOTH;
+		gc.gridx = 0;
+		gc.gridy = 0;
+		
+		panel.add(emitters, gc);
+		
+		gc.gridy = 1;
+		gc.weighty = 4;
+		panel.add(options, gc);
+		
+		right.add(panel);
 		
 		right.revalidate();
 		right.repaint();
 	}
 	
+	public JPanel createEmitterSelection()
+	{
+		JPanel panel = new JPanel();
+		panel.setLayout(new GridBagLayout());
+		
+		final ArrayList<ParticleEmitter> emitters = new ArrayList<ParticleEmitter>();
+		renderer.effect.getEmitters(emitters);
+		
+		String[] emitterNames = new String[emitters.size()];
+		for (int i = 0; i < emitters.size(); i++)
+		{
+			emitterNames[i] = emitters.get(i).name;
+		}
+		
+		final JComboBox<String> comboBox = new JComboBox<String>(emitterNames);
+		if (renderer.currentEmitter != -1) comboBox.setSelectedItem(renderer.effect.getEmitter(renderer.currentEmitter).name);
+		else comboBox.setSelectedItem(null);
+		comboBox.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				renderer.currentEmitter = comboBox.getSelectedIndex();
+				right();
+			}});
+		
+		JButton newEmitter = new JButton("New");
+		newEmitter.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				ParticleEmitter emitter = renderer.getDefaultEmitter();
+				renderer.effect.addEmitter(emitter, 0, 0, 0);
+				right();
+			}});
+		
+		JButton deleteEmitter = new JButton("Delete");
+		deleteEmitter.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				renderer.effect.deleteEmitter(comboBox.getSelectedIndex());
+				renderer.currentEmitter = -1;
+				right();
+			}});
+		
+		JButton renameEmitter = new JButton("Rename");
+		renameEmitter.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				String s = (String)JOptionPane.showInputDialog(Main.this, "New name:", "", JOptionPane.PLAIN_MESSAGE);
+
+				if ((s != null) && (s.length() > 0)) {
+					
+					ParticleEmitter emitter = emitters.get(comboBox.getSelectedIndex());
+					emitter.name = s;
+					right();
+				}
+			}});
+		
+		GridBagConstraints gc = new GridBagConstraints();
+		gc.gridx = 0;
+		gc.gridy = 0;
+		
+		panel.add(comboBox, gc);
+		
+		gc.gridx = 1;
+		panel.add(newEmitter, gc);
+		
+		gc.gridx = 0;
+		gc.gridy = 1;
+		panel.add(renameEmitter, gc);
+		
+		gc.gridx = 1;
+		panel.add(deleteEmitter, gc);
+		
+		return panel;
+	}
+	
 	public JPanel createRightOptions()
 	{
-		if (renderer.currentEmitter == null) return null;
+		if (renderer.currentEmitter == -1) return null;
 		
 		JPanel panel = new JPanel();
 		panel.setLayout(new GridBagLayout());
@@ -124,7 +214,7 @@ public class Main extends JFrame {
 		panel.add(new JLabel("Max Particles:"), gc);
 		
 		gc.gridx = 1;
-		final JTextField mparticles = new JTextField(""+renderer.currentEmitter.maxParticles, 4);
+		final JTextField mparticles = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles, 4);
 		panel.add(mparticles, gc);
 		
 		gc.gridx = 0;
@@ -134,8 +224,8 @@ public class Main extends JFrame {
 		autocalculate.addActionListener(new ActionListener(){
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				renderer.currentEmitter.calculateParticles();
-				mparticles.setText(""+renderer.currentEmitter.maxParticles);
+				renderer.effect.getEmitter(renderer.currentEmitter).calculateParticles();
+				mparticles.setText(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles);
 			}});
 		panel.add(autocalculate, gc);
 		gc.gridwidth = 1;
@@ -145,7 +235,7 @@ public class Main extends JFrame {
 		panel.add(new JLabel("Max Lifetime:"), gc);
 		
 		gc.gridx = 1;
-		final JTextField lifetime = new JTextField(""+renderer.currentEmitter.particleLifetime, 4);
+		final JTextField lifetime = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).particleLifetime, 4);
 		panel.add(lifetime, gc);
 		
 		gc.gridx = 0;
@@ -153,7 +243,7 @@ public class Main extends JFrame {
 		panel.add(new JLabel("Lifetime Start Var:"), gc);
 		
 		gc.gridx = 1;
-		final JTextField lifetimeVar = new JTextField(""+renderer.currentEmitter.particleLifetimeVar, 4);
+		final JTextField lifetimeVar = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).particleLifetimeVar, 4);
 		panel.add(lifetimeVar, gc);
 		
 		gc.gridx = 0;
@@ -161,7 +251,7 @@ public class Main extends JFrame {
 		panel.add(new JLabel("Particles/Second:"), gc);
 		
 		gc.gridx = 1;
-		final JTextField emissionTime = new JTextField(""+1/renderer.currentEmitter.emissionTime, 4);
+		final JTextField emissionTime = new JTextField(""+1/renderer.effect.getEmitter(renderer.currentEmitter).emissionTime, 4);
 		panel.add(emissionTime, gc);
 		
 		gc.gridx = 0;
@@ -170,17 +260,60 @@ public class Main extends JFrame {
 		
 		JPanel es = new JPanel();
 		
-		final JTextField emissionx = new JTextField(""+renderer.currentEmitter.ex, 3);
+		final JTextField emissionx = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).ex, 3);
 		es.add(emissionx);
 		
-		final JTextField emissiony = new JTextField(""+renderer.currentEmitter.ey, 3);
+		final JTextField emissiony = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).ey, 3);
 		es.add(emissiony);
 		
-		final JTextField emissionz = new JTextField(""+renderer.currentEmitter.ez, 3);
+		final JTextField emissionz = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).ez, 3);
 		es.add(emissionz);
 		
 		gc.gridx = 1;
 		panel.add(es, gc);
+		
+		gc.gridx = 0;
+		gc.gridy++;
+		panel.add(new JLabel("Position XYZ:"), gc);
+		
+		JPanel ps = new JPanel();
+		Vector3 pos = renderer.effect.getEmitterPosition(renderer.currentEmitter, new Vector3());
+		
+		final JTextField px = new JTextField(""+pos.x, 3);
+		ps.add(px);
+		
+		final JTextField py = new JTextField(""+pos.y, 3);
+		ps.add(py);
+		
+		final JTextField pz = new JTextField(""+pos.z, 3);
+		ps.add(pz);
+		
+		gc.gridx = 1;
+		panel.add(ps, gc);
+		
+		gc.gridx = 0;
+		gc.gridy++;
+		
+		panel.add(new JLabel("Blend Mode:"), gc);
+		String[] blendModes = {"ZERO", "ONE",
+				"SRC_COLOR", "ONE_MINUS_SRC_COLOR", "DST_COLOR", "ONE_MINUS_DST_COLOR",
+				"SRC_ALPHA", "ONE_MINUS_SRC_ALPHA", "DST_ALPHA", "ONE_MINUS_DEST_ALPHA",
+				"CONSTANT_COLOR", "ONE_MINUS_CONSTANT_COLOR", "CONSTANT_ALPHA", "ONE_MINUS_CONSTANT_ALPHA",
+				"SRC_ALPHA_SATURATE"};
+		
+		JPanel bm = new JPanel();
+		bm.add(new JLabel("SRC:"));
+		final JComboBox<String> SRCBlend = new JComboBox<String>(blendModes);
+		SRCBlend.setSelectedItem(getBlendString(renderer.effect.getEmitter(renderer.currentEmitter).blendFuncSRC));
+		bm.add(SRCBlend);
+		
+		bm.add(new JLabel("DST:"));
+		final JComboBox<String> DSTBlend = new JComboBox<String>(blendModes);
+		DSTBlend.setSelectedItem(getBlendString(renderer.effect.getEmitter(renderer.currentEmitter).blendFuncDST));
+		bm.add(DSTBlend);
+		
+		gc.gridx = 1;
+		panel.add(bm, gc);
 		
 		gc.gridx = 0;
 		gc.gridy++;
@@ -189,7 +322,7 @@ public class Main extends JFrame {
 		button.addActionListener(new ActionListener(){
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				ParticleEmitter pe = renderer.currentEmitter;
+				ParticleEmitter pe = renderer.effect.getEmitter(renderer.currentEmitter);
 				boolean mesh = false;
 				boolean tex = false;
 				
@@ -243,6 +376,17 @@ public class Main extends JFrame {
 					}
 				} catch (Exception argh){}
 				
+				try {
+					float x = Float.parseFloat(px.getText());
+					float y = Float.parseFloat(py.getText());
+					float z = Float.parseFloat(pz.getText());
+					
+					renderer.effect.setEmitterPosition(renderer.currentEmitter, new Vector3(x, y, z));
+	
+				} catch (Exception argh){}
+				
+				pe.blendFuncSRC = getBlendMode((String) SRCBlend.getSelectedItem());
+				pe.blendFuncDST = getBlendMode((String) DSTBlend.getSelectedItem());
 				
 				if (mesh) pe.reloadParticles();
 				if (tex) pe.reloadTextures();
@@ -409,7 +553,7 @@ public class Main extends JFrame {
 		            renderer.effect = json.fromJson(ParticleEffect.class, effect);
 		            renderer.effect.create(renderer.lightManager);
 		            
-		            renderer.currentEmitter = null;
+		            renderer.currentEmitter = -1;
 		            
 		            right();
 		            
@@ -449,6 +593,46 @@ public class Main extends JFrame {
 		});
 
 	}
+	
+	public String getBlendString(int mode)
+	{
+		if (mode == GL20.GL_ZERO) return "ZERO";
+		else if (mode == GL20.GL_ONE) return "ONE";
+		else if (mode == GL20.GL_SRC_COLOR) return "SRC_COLOR";
+		else if (mode == GL20.GL_ONE_MINUS_SRC_COLOR) return "ONE_MINUS_SRC_COLOR";
+		else if (mode == GL20.GL_DST_COLOR) return "DST_COLOR";
+		else if (mode == GL20.GL_ONE_MINUS_DST_COLOR) return "ONE_MINUS_DST_COLOR";
+		else if (mode == GL20.GL_SRC_ALPHA) return "SRC_ALPHA";
+		else if (mode == GL20.GL_ONE_MINUS_SRC_ALPHA) return "ONE_MINUS_SRC_ALPHA";
+		else if (mode == GL20.GL_DST_ALPHA) return "DST_ALPHA";
+		else if (mode == GL20.GL_ONE_MINUS_DST_ALPHA) return "ONE_MINUS_DST_ALPHA";
+		else if (mode == GL20.GL_CONSTANT_COLOR) return "CONSTANT_COLOR";
+		else if (mode == GL20.GL_ONE_MINUS_CONSTANT_COLOR) return "ONE_MINUS_CONSTANT_COLOR";
+		else if (mode == GL20.GL_CONSTANT_ALPHA) return "CONSTANT_ALPHA";
+		else if (mode == GL20.GL_ONE_MINUS_CONSTANT_ALPHA) return "ONE_MINUS_CONSTANT_ALPHA";
+		else if (mode == GL20.GL_SRC_ALPHA_SATURATE) return "SRC_ALPHA_SATURATE";
+		else return null;
+	}
+	
+	public int getBlendMode(String mode)
+	{
+		if (mode.equals("ZERO")) return GL20.GL_ZERO;
+		else if (mode.equals("ONE")) return GL20.GL_ONE;
+		else if (mode.equals("SRC_COLOR")) return GL20.GL_SRC_COLOR;
+		else if (mode.equals("ONE_MINUS_SRC_COLOR")) return GL20.GL_ONE_MINUS_SRC_COLOR;
+		else if (mode.equals("DST_COLOR")) return GL20.GL_DST_COLOR;
+		else if (mode.equals("ONE_MINUS_DST_COLOR")) return GL20.GL_ONE_MINUS_DST_COLOR;
+		else if (mode.equals("SRC_ALPHA")) return GL20.GL_SRC_ALPHA;
+		else if (mode.equals("ONE_MINUS_SRC_ALPHA")) return GL20.GL_ONE_MINUS_SRC_ALPHA;
+		else if (mode.equals("DST_ALPHA")) return GL20.GL_DST_ALPHA;
+		else if (mode.equals("ONE_MINUS_DST_ALPHA")) return GL20.GL_ONE_MINUS_DST_ALPHA;
+		else if (mode.equals("CONSTANT_COLOR")) return GL20.GL_CONSTANT_COLOR;
+		else if (mode.equals("ONE_MINUS_CONSTANT_COLOR")) return GL20.GL_ONE_MINUS_CONSTANT_COLOR;
+		else if (mode.equals("CONSTANT_ALPHA")) return GL20.GL_CONSTANT_ALPHA;
+		else if (mode.equals("ONE_MINUS_CONSTANT_ALPHA")) return GL20.GL_ONE_MINUS_CONSTANT_ALPHA;
+		else if (mode.equals("SRC_ALPHA_SATURATE")) return GL20.GL_SRC_ALPHA_SATURATE;
+		else return 0;
+	}
 }
 
 class Renderer implements ApplicationListener
@@ -458,7 +642,7 @@ class Renderer implements ApplicationListener
 	PerspectiveCamera cam;
 	
 	ParticleEffect effect;
-	ParticleEmitter currentEmitter;
+	int currentEmitter;
 	LightManager lightManager;
 	
 	int width;
@@ -473,16 +657,24 @@ class Renderer implements ApplicationListener
 		lightManager = new LightManager(10, LightQuality.DEFERRED);
 
 		effect = new ParticleEffect(15);
-		ParticleEmitter flame = new ParticleEmitter(2, 2, 0.01f, 1.0f, 0.0f, 1.0f, 0, GL20.GL_SRC_ALPHA, GL20.GL_ONE, "f");
-		flame.createBasicEmitter(2, 1, new Color(0.8f, 0.9f, 0.1f, 1.0f), new Color(1.0f, 0.0f, 0.0f, 1.0f), 0, 3.5f, 0);
-		flame.setSpriteTimeline(true, new float[]{0, 0}, new float[]{2, 2});
-		flame.addLight(true, 0.07f, 0.5f, Color.ORANGE, true, 0, 2, 0);
-		flame.calculateParticles();
-		effect.addEmitter(flame, 
+		
+		ParticleEmitter emitter = getDefaultEmitter();
+		
+		effect.addEmitter(emitter, 
 				0, 0f, 0);
 		effect.create(lightManager);
 		
-		currentEmitter = flame;
+		currentEmitter = 0;
+	}
+	
+	public ParticleEmitter getDefaultEmitter()
+	{
+		ParticleEmitter orb = new ParticleEmitter(2, 2, 0.01f, 1.0f, 1.0f, 1.0f, 0, GL20.GL_SRC_ALPHA, GL20.GL_ONE, "orb", "blank");
+		orb.createBasicEmitter(1, 1, new Color(0.7f, 0.7f, 0.7f, 1), new Color(0.4f, 0.4f, 0.4f, 1), 0, 1, 0);
+		orb.calculateParticles();
+		orb.create(lightManager);
+		
+		return orb;
 	}
 
 	@Override
