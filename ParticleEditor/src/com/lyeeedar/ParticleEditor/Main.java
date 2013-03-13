@@ -1,5 +1,6 @@
 package com.lyeeedar.ParticleEditor;
 
+import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Graphics;
@@ -28,6 +29,8 @@ import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JColorChooser;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
@@ -395,49 +398,63 @@ public class Main extends JFrame {
 						pe.maxParticles = i;
 						mesh = true;
 					}
-				} catch (Exception argh){}
+				} catch (Exception argh){
+					mparticles.setText(""+pe.maxParticles);
+				}
 				
 				try {
 					float f = Float.parseFloat(lifetime.getText());
 					if (pe.particleLifetime != f) {
 						pe.particleLifetime = f;
 					}
-				} catch (Exception argh){}
+				} catch (Exception argh){
+					lifetime.setText(""+pe.particleLifetime);
+				}
 				
 				try {
 					float f = Float.parseFloat(lifetimeVar.getText());
 					if (pe.particleLifetimeVar != f) {
 						pe.particleLifetimeVar = f;
 					}
-				} catch (Exception argh){}
+				} catch (Exception argh){
+					lifetimeVar.setText(""+pe.particleLifetimeVar);
+				}
 				
 				try {
 					float f = 1/Float.parseFloat(emissionTime.getText());
 					if (pe.emissionTime != f) {
 						pe.emissionTime = f;
 					}
-				} catch (Exception argh){}
+				} catch (Exception argh){
+					emissionTime.setText(""+pe.emissionTime);
+				}
 				
 				try {
 					float f = Float.parseFloat(emissionx.getText());
 					if (pe.ex != f) {
 						pe.ex = f;
 					}
-				} catch (Exception argh){}
+				} catch (Exception argh){
+					emissionx.setText(""+pe.ex);
+				}
 				
 				try {
 					float f = Float.parseFloat(emissiony.getText());
 					if (pe.ey != f) {
 						pe.ey = f;
 					}
-				} catch (Exception argh){}
+				} catch (Exception argh){
+					emissiony.setText(""+pe.ey);
+				}
 				
 				try {
 					float f = Float.parseFloat(emissionz.getText());
 					if (pe.ez != f) {
 						pe.ez = f;
 					}
-				} catch (Exception argh){}
+				} catch (Exception argh){
+					emissionz.setText(""+pe.ez);
+				}
 				
 				try {
 					float x = Float.parseFloat(px.getText());
@@ -446,7 +463,12 @@ public class Main extends JFrame {
 					
 					renderer.effect.setEmitterPosition(renderer.currentEmitter, new Vector3(x, y, z));
 	
-				} catch (Exception argh){}
+				} catch (Exception argh){
+					Vector3 pos = renderer.effect.getEmitterPosition(renderer.currentEmitter, new Vector3());
+					px.setText(""+pos.x);
+					py.setText(""+pos.y);
+					pz.setText(""+pos.z);
+				}
 				
 				pe.blendFuncSRC = getBlendMode((String) SRCBlend.getSelectedItem());
 				pe.blendFuncDST = getBlendMode((String) DSTBlend.getSelectedItem());
@@ -478,16 +500,13 @@ public class Main extends JFrame {
 		bottom = new JPanel();
 		bottom.setLayout(new GridLayout(1, 1));
 		
-		JPanel top = new JPanel();
-		top.setLayout(new GridLayout(1, 1));
-		
-		JSplitPane hori = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, bottom);
-		JSplitPane vert = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
-		top.add(vert);
-		
 		left.setMinimumSize(new Dimension(500, 300));
 		
-		add(hori);
+		setLayout(new BorderLayout());
+		
+		add(left, BorderLayout.CENTER);
+		add(right, BorderLayout.EAST);
+		add(bottom, BorderLayout.SOUTH);
 	}
 	
 	public void createMenuBar()
@@ -905,10 +924,15 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 		{
 			if (i == selectedIndex)
 			{
+				g.setColor(java.awt.Color.GREEN);
+				
 				g.fillRect((int) (startOffset+(values.get(i).time*500)-(blobw/2)-2), top+10-(blobh/2)-2, blobw+4, blobh+4);
 			}
-			else
+			else {
+				g.setColor(java.awt.Color.RED);
+				
 				g.fillRect((int) (startOffset+(values.get(i).time*500)-(blobw/2)), top+10-(blobh/2), blobw, blobh);
+			}
 		}
 	}
 
@@ -939,15 +963,34 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 		repaint();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void mouseClicked(MouseEvent e) {
 		if (selectedIndex != -1)
 		{
-			//doshit
+			if (attribute == ParticleAttribute.SPRITE)
+			{
+				new TimelineSprite((TimelineInteger) values.get(selectedIndex), selectedIndex, (TimelinePanel<TimelineInteger>) this);
+			}
+			else if (attribute == ParticleAttribute.SIZE)
+			{
+				
+			}
+			else if (attribute == ParticleAttribute.COLOUR)
+			{
+				new TimelineColour((TimelineFloat) values.get(selectedIndex), selectedIndex, (TimelinePanel<TimelineFloat>) this);
+			}
+			else if (attribute == ParticleAttribute.VELOCITY)
+			{
+				
+			}
 		}
 		else
 		{
 			float time = ((float)(e.getX()-startOffset)) / 500;
+			
+			if (time <= 0) return;
+			
 			values.add(getNewT(time, values.get(0).values.length));
 			writeValues();
 			repaint();
@@ -995,6 +1038,7 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 				t.setInterpolated(true, values.get(i+1));
 			}
 		}
+		values.get(values.size()-1).interpolated = false;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -1017,4 +1061,158 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 		
 		return null;
 	}
+}
+
+abstract class TimelineFrame<T extends TimelineValue> extends JFrame
+{
+	T value;
+	TimelinePanel<T> parent;
+	int index;
+	
+	public TimelineFrame(T value, int index, TimelinePanel<T> parent)
+	{
+		this.value = value;
+		this.parent = parent;
+		this.index = index;
+		create();
+		
+		setLocationRelativeTo(null);
+		pack();
+		setVisible(true);
+	}
+	
+	public abstract void create();
+}
+
+class TimelineSprite extends TimelineFrame<TimelineInteger>
+{
+
+	public TimelineSprite(TimelineInteger value, int index, TimelinePanel<TimelineInteger> parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public void create() {
+		setLayout(new GridBagLayout());
+		GridBagConstraints gc = new GridBagConstraints();
+		gc.gridx = 0;
+		gc.gridy = 0;
+		
+		add(new JLabel("Time:"), gc);
+		
+		gc.gridx = 1;
+		JTextField time = new JTextField(""+value.time, 5);
+		add(time, gc);
+		
+		gc.gridx = 0;
+		gc.gridy++;
+	}
+}
+
+class TimelineColour extends TimelineFrame<TimelineFloat>
+{
+
+	public TimelineColour(TimelineFloat value, int index,
+			TimelinePanel<TimelineFloat> parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public void create() {
+		setLayout(new GridBagLayout());
+		GridBagConstraints gc = new GridBagConstraints();
+		gc.gridx = 0;
+		gc.gridy = 0;
+		
+		JPanel t = new JPanel();
+		t.add(new JLabel("Time:"));
+		
+		final JTextField time = new JTextField(""+value.time, 5);
+		t.add(time);
+		
+		add(t, gc);
+		
+		gc.gridx = 0;
+		gc.gridy++;
+		
+		final JColorChooser colour = new JColorChooser(new java.awt.Color(value.values[0], value.values[1], value.values[2], value.values[3]));
+		add(colour, gc);
+		
+		if (index > 0)
+		{
+			gc.gridx = 0;
+			gc.gridy++;
+			
+			JPanel buts = new JPanel();
+			JButton previous = new JButton("Copy Previous");
+			previous.addActionListener(new ActionListener(){
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					TimelineFloat t = parent.values.get(index-1);
+					value.interpolated = t.interpolated;
+					value.values[0] = t.values[0];
+					value.values[1] = t.values[1];
+					value.values[2] = t.values[2];
+					value.values[3] = t.values[3];
+					
+					colour.setColor(new java.awt.Color(value.values[0], value.values[1], value.values[2], value.values[3]));
+					
+					parent.writeValues();
+					create();
+				}});
+			buts.add(previous);
+			
+			JButton delete = new JButton("Delete");
+			delete.addActionListener(new ActionListener(){
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					parent.values.remove(index);
+					parent.writeValues();
+					dispose();
+				}});
+			buts.add(delete);
+			
+			add(buts, gc);
+		}
+		
+		gc.gridx = 0;
+		gc.gridy++;
+
+		final JCheckBox interpolated = new JCheckBox("Interpolated: ");
+		interpolated.setSelected(value.interpolated);
+		
+		add(interpolated, gc);
+		
+		gc.gridx = 0;
+		gc.gridy++;
+		
+		JButton apply = new JButton("Apply");
+		apply.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					float f = Float.parseFloat(time.getText());
+					value.time = f;
+				} catch (Exception wtf) {
+					time.setText(""+value.time);
+					return;
+				}
+				
+				float[] color = new float[4];
+				colour.getColor().getComponents(color);
+	
+				value.values[0] = color[0];
+				value.values[1] = color[1];
+				value.values[2] = color[2];
+				value.values[3] = color[3];
+				
+				value.interpolated = interpolated.isSelected();
+				
+				parent.writeValues();
+				parent.repaint();
+				dispose();
+			}});
+		add(apply, gc);
+	}
+	
 }
