@@ -7,6 +7,7 @@ import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -15,6 +16,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -27,7 +29,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JColorChooser;
@@ -50,6 +54,7 @@ import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.filechooser.FileFilter;
 
 import com.badlogic.gdx.ApplicationListener;
+import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
@@ -59,7 +64,10 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.tools.imagepacker.TexturePacker2;
+import com.badlogic.gdx.tools.imagepacker.TexturePacker2.Settings;
 import com.badlogic.gdx.utils.Json;
 import com.lyeeedar.Graphics.ParticleEffects.ParticleEffect;
 import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter;
@@ -69,6 +77,7 @@ import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter.TimelineInteger;
 import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter.TimelineValue;
 import com.lyeeedar.Roguelike3D.Graphics.Lights.LightManager;
 import com.lyeeedar.Roguelike3D.Graphics.Lights.LightManager.LightQuality;
+import com.lyeeedar.Utils.FileUtils;
 
 public class Main extends JFrame {
 	
@@ -122,19 +131,19 @@ public class Main extends JFrame {
 		
 		if (renderer.currentEmitter == -1) return;
 		
-		TimelinePanel<TimelineInteger> spriteTimeline = new TimelinePanel<TimelineInteger>(ParticleAttribute.SPRITE, TimelineInteger.class, renderer.effect.getEmitter(renderer.currentEmitter));
+		TimelinePanel<TimelineInteger> spriteTimeline = new TimelinePanel<TimelineInteger>(ParticleAttribute.SPRITE, TimelineInteger.class, renderer.effect.getEmitter(renderer.currentEmitter), this);
 		JScrollPane spriteScroll = new JScrollPane(spriteTimeline);
 		spriteScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
-		TimelinePanel<TimelineFloat> sizeTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.SIZE, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter));
+		TimelinePanel<TimelineFloat> sizeTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.SIZE, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter), this);
 		JScrollPane sizeScroll = new JScrollPane(sizeTimeline);
 		sizeScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
-		TimelinePanel<TimelineFloat> colourTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.COLOUR, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter));
+		TimelinePanel<TimelineFloat> colourTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.COLOUR, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter), this);
 		JScrollPane colourScroll = new JScrollPane(colourTimeline);
 		colourScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
-		TimelinePanel<TimelineFloat> velocityTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.VELOCITY, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter));
+		TimelinePanel<TimelineFloat> velocityTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.VELOCITY, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter), this);
 		JScrollPane velocityScroll = new JScrollPane(velocityTimeline);
 		velocityScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
@@ -202,6 +211,8 @@ public class Main extends JFrame {
 				renderer.currentEmitter = comboBox.getSelectedIndex();
 				right();
 				timeline();
+				renderer.spriteNum = FileUtils.deconstructAtlas(renderer.emitters.get(renderer.currentEmitter).atlas).length;
+				
 			}});
 		
 		JButton newEmitter = new JButton("New");
@@ -212,6 +223,8 @@ public class Main extends JFrame {
 				renderer.effect.addEmitter(emitter, 0, 0, 0);
 				right();
 				timeline();
+				renderer.spriteNum = FileUtils.deconstructAtlas(renderer.emitters.get(renderer.currentEmitter).atlas).length;
+				
 			}});
 		
 		JButton deleteEmitter = new JButton("Delete");
@@ -380,6 +393,17 @@ public class Main extends JFrame {
 		
 		gc.gridx = 1;
 		panel.add(DSTBlend, gc);
+		
+		gc.gridx = 0;
+		gc.gridy++;
+		JButton sprite = new JButton("Edit Sprites");
+		sprite.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				new SpriteSelectorFrame(renderer.effect.getEmitter(renderer.currentEmitter), Main.this);
+				
+			}});
+		panel.add(sprite, gc);
 		
 		gc.gridx = 0;
 		gc.gridy++;
@@ -725,6 +749,7 @@ class Renderer implements ApplicationListener
 	
 	ParticleEffect effect;
 	int currentEmitter;
+	int spriteNum;
 	LightManager lightManager;
 	
 	int width;
@@ -747,6 +772,9 @@ class Renderer implements ApplicationListener
 		effect.create(lightManager);
 		
 		currentEmitter = 0;
+		
+		spriteNum = FileUtils.deconstructAtlas(emitter.atlas).length;
+		
 	}
 	
 	public ParticleEmitter getDefaultEmitter()
@@ -822,10 +850,12 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 	
 	static final int startOffset = 15;
 	
-	static final int time = 10;
+	static final int time = 30;
 	
 	static final int blobw = 8;
 	static final int blobh = 8;
+	
+	Main main;
 	
 	ArrayList<T> values;
 	Class<T> type;
@@ -836,8 +866,9 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 	boolean lock = false;
 	
 	ParticleAttribute attribute;
-	public TimelinePanel(ParticleAttribute attribute, Class<T> type, ParticleEmitter emitter)
+	public TimelinePanel(ParticleAttribute attribute, Class<T> type, ParticleEmitter emitter, Main main)
 	{
+		this.main = main;
 		this.emitter = emitter;
 		this.type = type;
 		this.attribute = attribute;
@@ -974,7 +1005,7 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 			}
 			else if (attribute == ParticleAttribute.SIZE)
 			{
-				
+				new TimelineSize((TimelineFloat) values.get(selectedIndex), selectedIndex, (TimelinePanel<TimelineFloat>) this);
 			}
 			else if (attribute == ParticleAttribute.COLOUR)
 			{
@@ -982,7 +1013,7 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 			}
 			else if (attribute == ParticleAttribute.VELOCITY)
 			{
-				
+				new TimelineVelocity((TimelineFloat) values.get(selectedIndex), selectedIndex, (TimelinePanel<TimelineFloat>) this);
 			}
 		}
 		else
@@ -1069,6 +1100,9 @@ abstract class TimelineFrame<T extends TimelineValue> extends JFrame
 	TimelinePanel<T> parent;
 	int index;
 	
+	JTextField time;
+	JCheckBox interpolated;
+	
 	public TimelineFrame(T value, int index, TimelinePanel<T> parent)
 	{
 		this.value = value;
@@ -1081,44 +1115,8 @@ abstract class TimelineFrame<T extends TimelineValue> extends JFrame
 		setVisible(true);
 	}
 	
-	public abstract void create();
-}
-
-class TimelineSprite extends TimelineFrame<TimelineInteger>
-{
-
-	public TimelineSprite(TimelineInteger value, int index, TimelinePanel<TimelineInteger> parent) {
-		super(value, index, parent);
-	}
-
-	@Override
-	public void create() {
-		setLayout(new GridBagLayout());
-		GridBagConstraints gc = new GridBagConstraints();
-		gc.gridx = 0;
-		gc.gridy = 0;
-		
-		add(new JLabel("Time:"), gc);
-		
-		gc.gridx = 1;
-		JTextField time = new JTextField(""+value.time, 5);
-		add(time, gc);
-		
-		gc.gridx = 0;
-		gc.gridy++;
-	}
-}
-
-class TimelineColour extends TimelineFrame<TimelineFloat>
-{
-
-	public TimelineColour(TimelineFloat value, int index,
-			TimelinePanel<TimelineFloat> parent) {
-		super(value, index, parent);
-	}
-
-	@Override
-	public void create() {
+	public void create()
+	{
 		setLayout(new GridBagLayout());
 		GridBagConstraints gc = new GridBagConstraints();
 		gc.gridx = 0;
@@ -1127,7 +1125,7 @@ class TimelineColour extends TimelineFrame<TimelineFloat>
 		JPanel t = new JPanel();
 		t.add(new JLabel("Time:"));
 		
-		final JTextField time = new JTextField(""+value.time, 5);
+		time = new JTextField(""+value.time, 5);
 		t.add(time);
 		
 		add(t, gc);
@@ -1135,8 +1133,7 @@ class TimelineColour extends TimelineFrame<TimelineFloat>
 		gc.gridx = 0;
 		gc.gridy++;
 		
-		final JColorChooser colour = new JColorChooser(new java.awt.Color(value.values[0], value.values[1], value.values[2], value.values[3]));
-		add(colour, gc);
+		add(getPanel(), gc);
 		
 		if (index > 0)
 		{
@@ -1148,15 +1145,7 @@ class TimelineColour extends TimelineFrame<TimelineFloat>
 			previous.addActionListener(new ActionListener(){
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					TimelineFloat t = parent.values.get(index-1);
-					value.interpolated = t.interpolated;
-					value.values[0] = t.values[0];
-					value.values[1] = t.values[1];
-					value.values[2] = t.values[2];
-					value.values[3] = t.values[3];
-					
-					colour.setColor(new java.awt.Color(value.values[0], value.values[1], value.values[2], value.values[3]));
-					
+					copyPrevious();
 					parent.writeValues();
 					create();
 				}});
@@ -1178,7 +1167,7 @@ class TimelineColour extends TimelineFrame<TimelineFloat>
 		gc.gridx = 0;
 		gc.gridy++;
 
-		final JCheckBox interpolated = new JCheckBox("Interpolated: ");
+		interpolated = new JCheckBox("Interpolated: ");
 		interpolated.setSelected(value.interpolated);
 		
 		add(interpolated, gc);
@@ -1190,23 +1179,7 @@ class TimelineColour extends TimelineFrame<TimelineFloat>
 		apply.addActionListener(new ActionListener(){
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				try {
-					float f = Float.parseFloat(time.getText());
-					value.time = f;
-				} catch (Exception wtf) {
-					time.setText(""+value.time);
-					return;
-				}
-				
-				float[] color = new float[4];
-				colour.getColor().getComponents(color);
-	
-				value.values[0] = color[0];
-				value.values[1] = color[1];
-				value.values[2] = color[2];
-				value.values[3] = color[3];
-				
-				value.interpolated = interpolated.isSelected();
+				apply();
 				
 				parent.writeValues();
 				parent.repaint();
@@ -1215,4 +1188,521 @@ class TimelineColour extends TimelineFrame<TimelineFloat>
 		add(apply, gc);
 	}
 	
+	public abstract JPanel getPanel();
+	public abstract void copyPrevious();
+	public abstract void apply();
+}
+
+class TimelineSprite extends TimelineFrame<TimelineInteger>
+{
+	JComboBox<Integer> box;
+	public TimelineSprite(TimelineInteger value, int index, TimelinePanel<TimelineInteger> parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		JPanel panel = new JPanel();
+		
+		if (box == null)
+		{
+			Integer[] indexes = new Integer[parent.main.renderer.spriteNum];
+			for (int i = 0; i < indexes.length; i++) indexes[i] = i;
+			box = new JComboBox<Integer>(indexes);
+		}
+		
+		box.setSelectedIndex(value.values[0]);
+		
+		panel.add(new JLabel("Sprite Index: "));
+		panel.add(box);
+		
+		return panel;
+	}
+
+	public void copyPrevious()
+	{
+		TimelineInteger t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = t.values[0];
+		
+		box.setSelectedIndex(value.values[0]);
+	}
+	
+	public void apply()
+	{
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		};
+
+		value.values[0] = box.getSelectedIndex();
+		
+		value.interpolated = interpolated.isSelected();
+	}
+
+}
+
+class TimelineColour extends TimelineFrame<TimelineFloat>
+{
+
+	JColorChooser colour;
+	public TimelineColour(TimelineFloat value, int index,
+			TimelinePanel<TimelineFloat> parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		
+		JPanel panel = new JPanel();
+		
+		colour = new JColorChooser(new java.awt.Color(value.values[0], value.values[1], value.values[2], value.values[3]));
+		panel.add(colour);
+		
+		return panel;
+	}
+	
+	public void copyPrevious()
+	{
+		TimelineFloat t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = t.values[0];
+		value.values[1] = t.values[1];
+		value.values[2] = t.values[2];
+		value.values[3] = t.values[3];
+		
+		colour.setColor(new java.awt.Color(value.values[0], value.values[1], value.values[2], value.values[3]));
+	}
+	
+	public void apply()
+	{
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		}
+		
+		float[] color = new float[4];
+		colour.getColor().getComponents(color);
+
+		value.values[0] = color[0];
+		value.values[1] = color[1];
+		value.values[2] = color[2];
+		value.values[3] = color[3];
+		
+		value.interpolated = interpolated.isSelected();
+	}
+	
+}
+
+class TimelineSize extends TimelineFrame<TimelineFloat>
+{
+
+	JTextField width;
+	JTextField height;
+	public TimelineSize(TimelineFloat value, int index,
+			TimelinePanel<TimelineFloat> parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		JPanel panel = new JPanel();
+		
+		width = new JTextField(""+value.values[0], 4);
+		height = new JTextField(""+value.values[1], 4);
+		
+		panel.add(new JLabel("Size: "));
+		panel.add(width);
+		panel.add(new JLabel(" X "));
+		panel.add(height);
+		
+		return panel;
+	}
+
+	@Override
+	public void copyPrevious() {
+		TimelineFloat t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = t.values[0];
+		value.values[1] = t.values[1];
+		
+		width.setText(""+value.values[0]);
+		height.setText(""+value.values[1]);
+		
+	}
+
+	@Override
+	public void apply() {
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		}
+		
+		try {
+			float f = Float.parseFloat(width.getText());
+			value.values[0] = f;
+		} catch (Exception wtf) {
+			width.setText(""+value.values[0]);
+			return;
+		}
+		
+		try {
+			float f = Float.parseFloat(height.getText());
+			value.values[1] = f;
+		} catch (Exception wtf) {
+			height.setText(""+value.values[1]);
+			return;
+		}
+
+		value.interpolated = interpolated.isSelected();
+		
+	}
+}
+
+class TimelineVelocity extends TimelineFrame<TimelineFloat>
+{
+
+	JTextField x;
+	JTextField y;
+	JTextField z;
+	public TimelineVelocity(TimelineFloat value, int index,
+			TimelinePanel<TimelineFloat> parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		JPanel panel = new JPanel();
+		
+		x = new JTextField(""+value.values[0], 4);
+		y = new JTextField(""+value.values[1], 4);
+		z = new JTextField(""+value.values[2], 4);
+		
+		panel.add(new JLabel("Velocity: "));
+		panel.add(x);
+		panel.add(y);
+		panel.add(z);
+		
+		return panel;
+	}
+
+	@Override
+	public void copyPrevious() {
+		TimelineFloat t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = t.values[0];
+		value.values[1] = t.values[1];
+		value.values[2] = t.values[2];
+		
+		x.setText(""+value.values[0]);
+		y.setText(""+value.values[1]);
+		z.setText(""+value.values[2]);
+		
+	}
+
+	@Override
+	public void apply() {
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		}
+		
+		try {
+			float f = Float.parseFloat(x.getText());
+			value.values[0] = f;
+		} catch (Exception wtf) {
+			x.setText(""+value.values[0]);
+			return;
+		}
+		
+		try {
+			float f = Float.parseFloat(y.getText());
+			value.values[1] = f;
+		} catch (Exception wtf) {
+			y.setText(""+value.values[1]);
+			return;
+		}
+		
+		try {
+			float f = Float.parseFloat(z.getText());
+			value.values[2] = f;
+		} catch (Exception wtf) {
+			z.setText(""+value.values[2]);
+			return;
+		}
+
+		value.interpolated = interpolated.isSelected();
+		
+	}
+}
+
+class SpriteSelectorFrame extends JFrame
+{
+	ParticleEmitter emitter;
+	ArrayList<BufferedImage> images;
+	int selectedIndex = 0;
+	
+	JPanel panel = new JPanel();
+	
+	JTextField name;
+	Main main;
+	
+	File file = new File("");
+
+	public SpriteSelectorFrame(ParticleEmitter emitter, Main main)
+	{
+		this.emitter = emitter;
+		this.main = main;
+		
+		images = new ArrayList<BufferedImage>();
+		BufferedImage[] bu = FileUtils.deconstructAtlas(emitter.atlas);
+		for (BufferedImage b : bu) images.add(b);
+		
+		add(panel);
+		
+		create();
+		
+		setLocationRelativeTo(null);
+		setSize(600, 400);
+		setVisible(true);
+	}
+	
+	public void create()
+	{
+		panel.removeAll();
+		panel.setLayout(new GridLayout(1, 2));
+		
+		JPanel left = new JPanel();
+		left.setLayout(new GridBagLayout());
+		
+		GridBagConstraints gc = new GridBagConstraints();
+		gc.gridx = 0;
+		gc.gridy = 0;
+		
+		JButton load = new JButton("Load");
+		load.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JFileChooser fc = new JFileChooser();
+				
+				fc.setSelectedFile(file);
+				
+				fc.setAcceptAllFileFilterUsed(false);
+				fc.setFileFilter(new FileFilter(){
+					@Override
+					public boolean accept(File f) {
+						if (f.isDirectory()) {
+					        return true;
+					    }
+						String extension = getExtension(f);
+						
+						if (extension != null && extension.equals("atlas")) return true;
+						
+						return false;
+					}
+
+					@Override
+					public String getDescription() {
+						return "Atlases Only";
+					}
+				
+					public String getExtension(File f) {
+				        String ext = null;
+				        String s = f.getName();
+				        int i = s.lastIndexOf('.');
+
+				        if (i > 0 &&  i < s.length() - 1) {
+				            ext = s.substring(i+1).toLowerCase();
+				        }
+				        return ext;
+				    }
+				});
+				
+				int returnVal = fc.showOpenDialog(null);
+
+		        if (returnVal == JFileChooser.APPROVE_OPTION) {
+		            file = fc.getSelectedFile();
+		            
+		            images = new ArrayList<BufferedImage>();
+		    		BufferedImage[] bu = FileUtils.deconstructAtlas(new TextureAtlas(Gdx.files.getFileHandle(file.getAbsolutePath(), FileType.Absolute)));
+		    		for (BufferedImage b : bu) images.add(b);
+		    		
+		    		name.setText(file.getName().replace(".atlas", ""));
+		    		
+		    		create();
+		    		
+		        } else {
+		            
+		        }
+			}});
+		left.add(load, gc);
+		
+		gc.gridx = 0;
+		gc.gridy++;
+		gc.gridwidth = 2;
+		if (name == null) name = new JTextField(emitter.atlasName, 7);
+		left.add(name, gc);
+		gc.gridwidth = 1;
+		
+		gc.gridx = 0;
+		gc.gridy++;
+		left.add(new JLabel("Sprite Index: "), gc);
+		
+		Integer[] ints = new Integer[images.size()];
+		for (int i = 0; i < ints.length; i++) ints[i] = i;
+		
+		final JComboBox<Integer> box = new JComboBox<Integer>(ints);
+		box.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (selectedIndex != box.getSelectedIndex())
+				{
+					selectedIndex = box.getSelectedIndex();
+					create();
+				}
+				
+			}});
+		if (selectedIndex != -1) box.setSelectedIndex(selectedIndex);
+		
+		gc.gridx = 1;
+		left.add(box, gc);
+		
+		JButton add = new JButton("Add");
+		add.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JFileChooser fc = new JFileChooser();
+				
+				fc.setSelectedFile(file);
+				
+				fc.setAcceptAllFileFilterUsed(false);
+				fc.setFileFilter(new FileFilter(){
+					@Override
+					public boolean accept(File f) {
+						if (f.isDirectory()) {
+					        return true;
+					    }
+						String extension = getExtension(f);
+						
+						if (extension != null && extension.equals("png")) return true;
+						
+						return false;
+					}
+
+					@Override
+					public String getDescription() {
+						return "PNG Files Only";
+					}
+				
+					public String getExtension(File f) {
+				        String ext = null;
+				        String s = f.getName();
+				        int i = s.lastIndexOf('.');
+
+				        if (i > 0 &&  i < s.length() - 1) {
+				            ext = s.substring(i+1).toLowerCase();
+				        }
+				        return ext;
+				    }
+				});
+				
+				int returnVal = fc.showOpenDialog(null);
+
+		        if (returnVal == JFileChooser.APPROVE_OPTION) {
+		            file = fc.getSelectedFile();
+		            
+		            try {
+						BufferedImage image = ImageIO.read(file);
+						
+						images.add(image);
+						
+						selectedIndex = images.size()-1;
+						create();
+						
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+		        } else {
+		            
+		        }
+				
+			}});
+		
+		gc.gridx = 0;
+		gc.gridy++;
+		left.add(add, gc);
+		
+		JButton remove = new JButton("Remove");
+		remove.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (images.size() > 1)
+				{
+					images.remove(selectedIndex);
+					
+					if (selectedIndex == images.size()) selectedIndex--;
+					
+					create();
+				}
+				
+			}});
+		
+		gc.gridx = 1;
+		left.add(remove, gc);
+		
+		JButton apply = new JButton("Apply");
+		apply.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				
+				if (images.size() == 0) return;
+				
+				FileUtils.unloadAtlases();
+				
+				TexturePacker2 packer = new TexturePacker2(new File(""), new Settings());
+				
+				int i = 0;
+				for (; i < images.size(); i++){
+					packer.addImage(images.get(i), "sprite"+i);
+				}
+				
+				packer.pack(Gdx.files.internal("data/atlases").file(), name.getText());
+				
+				emitter.atlasName = name.getText();
+				emitter.reloadTextures();
+				
+				main.renderer.spriteNum = i;
+				
+				dispose();
+				
+			}});
+		
+		gc.gridx = 0;
+		gc.gridwidth = 2;
+		gc.gridy++;
+		
+		left.add(apply, gc);
+		
+		if (selectedIndex != -1)
+		{
+			left.add(new JLabel(new ImageIcon(images.get(selectedIndex))));
+		}
+		
+		panel.add(left);
+		
+		panel.revalidate();
+		panel.repaint();
+	}
 }

@@ -6,7 +6,7 @@ repeat: none
 sprite0
   rotate: false
   xy: 1, 1
-  size: 19, 19
-  orig: 19, 19
+  size: 50, 50
+  orig: 50, 50
   offset: 0, 0
-  index: -1
+  index: 0
