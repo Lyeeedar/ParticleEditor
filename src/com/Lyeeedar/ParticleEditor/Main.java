@@ -1,4 +1,4 @@
-package com.lyeeedar.ParticleEditor;
+package com.Lyeeedar.ParticleEditor;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -69,15 +69,14 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.tools.imagepacker.TexturePacker2;
 import com.badlogic.gdx.tools.imagepacker.TexturePacker2.Settings;
 import com.badlogic.gdx.utils.Json;
-import com.lyeeedar.Graphics.ParticleEffects.ParticleEffect;
-import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter;
-import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter.ParticleAttribute;
-import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter.TimelineFloat;
-import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter.TimelineInteger;
-import com.lyeeedar.Graphics.ParticleEffects.ParticleEmitter.TimelineValue;
-import com.lyeeedar.Roguelike3D.Graphics.Lights.LightManager;
-import com.lyeeedar.Roguelike3D.Graphics.Lights.LightManager.LightQuality;
-import com.lyeeedar.Utils.FileUtils;
+import com.Lyeeedar.Graphics.Lights.LightManager;
+import com.Lyeeedar.Graphics.Particles.ParticleEffect;
+import com.Lyeeedar.Graphics.Particles.ParticleEmitter;
+import com.Lyeeedar.Graphics.Particles.ParticleEmitter.ParticleAttribute;
+import com.Lyeeedar.Graphics.Particles.ParticleEmitter.TimelineValue;
+import com.Lyeeedar.Graphics.Particles.ParticleEmitter.TimelineValue;
+import com.Lyeeedar.Util.FileUtils;
+import com.Lyeeedar.Util.ImageUtils;
 
 public class Main extends JFrame {
 	
@@ -131,19 +130,19 @@ public class Main extends JFrame {
 		
 		if (renderer.currentEmitter == -1) return;
 		
-		TimelinePanel<TimelineInteger> spriteTimeline = new TimelinePanel<TimelineInteger>(ParticleAttribute.SPRITE, TimelineInteger.class, renderer.effect.getEmitter(renderer.currentEmitter), this);
+		TimelinePanel spriteTimeline = new TimelinePanel(ParticleAttribute.SPRITE, renderer.effect.getEmitter(renderer.currentEmitter), this);
 		JScrollPane spriteScroll = new JScrollPane(spriteTimeline);
 		spriteScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
-		TimelinePanel<TimelineFloat> sizeTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.SIZE, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter), this);
+		TimelinePanel sizeTimeline = new TimelinePanel(ParticleAttribute.SIZE, renderer.effect.getEmitter(renderer.currentEmitter), this);
 		JScrollPane sizeScroll = new JScrollPane(sizeTimeline);
 		sizeScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
-		TimelinePanel<TimelineFloat> colourTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.COLOUR, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter), this);
+		TimelinePanel colourTimeline = new TimelinePanel(ParticleAttribute.COLOUR, renderer.effect.getEmitter(renderer.currentEmitter), this);
 		JScrollPane colourScroll = new JScrollPane(colourTimeline);
 		colourScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
-		TimelinePanel<TimelineFloat> velocityTimeline = new TimelinePanel<TimelineFloat>(ParticleAttribute.VELOCITY, TimelineFloat.class, renderer.effect.getEmitter(renderer.currentEmitter), this);
+		TimelinePanel velocityTimeline = new TimelinePanel(ParticleAttribute.VELOCITY, renderer.effect.getEmitter(renderer.currentEmitter), this);
 		JScrollPane velocityScroll = new JScrollPane(velocityTimeline);
 		velocityScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 		
@@ -657,7 +656,7 @@ public class Main extends JFrame {
 		            }
 		            
 		            renderer.effect = json.fromJson(ParticleEffect.class, effect);
-		            renderer.effect.create(renderer.lightManager);
+		            renderer.effect.create();
 		            
 		            renderer.currentEmitter = -1;
 		            
@@ -761,7 +760,7 @@ class Renderer implements ApplicationListener
 		font = new BitmapFont();
 		batch = new SpriteBatch();
 		
-		lightManager = new LightManager(10, LightQuality.DEFERRED);
+		lightManager = new LightManager();
 
 		effect = new ParticleEffect(15);
 		
@@ -769,7 +768,7 @@ class Renderer implements ApplicationListener
 		
 		effect.addEmitter(emitter, 
 				0, 0f, 0);
-		effect.create(lightManager);
+		effect.create();
 		
 		currentEmitter = 0;
 		
@@ -779,10 +778,10 @@ class Renderer implements ApplicationListener
 	
 	public ParticleEmitter getDefaultEmitter()
 	{
-		ParticleEmitter orb = new ParticleEmitter(2, 2, 0.01f, 1.0f, 1.0f, 1.0f, 0, GL20.GL_SRC_ALPHA, GL20.GL_ONE, "orb", "blank");
+		ParticleEmitter orb = new ParticleEmitter(2, 2, 0.01f, 1.0f, 1.0f, 1.0f, 0, GL20.GL_SRC_ALPHA, GL20.GL_ONE, "data/atlases/orb.atlas", "blank");
 		orb.createBasicEmitter(1, 1, new Color(0.7f, 0.7f, 0.7f, 1), new Color(0.4f, 0.4f, 0.4f, 1), 0, 1, 0);
 		orb.calculateParticles();
-		orb.create(lightManager);
+		orb.create();
 		
 		return orb;
 	}
@@ -811,7 +810,7 @@ class Renderer implements ApplicationListener
 		
 		effect.setPosition(0, -2, 10);
 		effect.update(Gdx.app.getGraphics().getDeltaTime(), cam);
-		effect.getEmitters(emitters, cam);
+		effect.getVisibleEmitters(emitters, cam);
 		
 		Collections.sort(emitters, ParticleEmitter.getComparator());
 
@@ -843,7 +842,7 @@ class Renderer implements ApplicationListener
 	
 }
 
-class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseListener, MouseMotionListener
+class TimelinePanel extends JPanel implements MouseListener, MouseMotionListener
 {
 	static final int top = 20;
 	static final int bot = 30;
@@ -857,8 +856,8 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 	
 	Main main;
 	
-	ArrayList<T> values;
-	Class<T> type;
+	ArrayList<TimelineValue> values;
+	Class<TimelineValue> type;
 	ParticleEmitter emitter;
 	
 	int selectedIndex = -1;
@@ -866,7 +865,7 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 	boolean lock = false;
 	
 	ParticleAttribute attribute;
-	public TimelinePanel(ParticleAttribute attribute, Class<T> type, ParticleEmitter emitter, Main main)
+	public TimelinePanel(ParticleAttribute attribute, ParticleEmitter emitter, Main main)
 	{
 		this.main = main;
 		this.emitter = emitter;
@@ -883,24 +882,24 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 	}
 	
 	@SuppressWarnings("unchecked")
-	public ArrayList<T> getValue()
+	public ArrayList<TimelineValue> getValue()
 	{
-		ArrayList<T> values = new ArrayList<T>();
+		ArrayList<TimelineValue> values = new ArrayList<TimelineValue>();
 		if (attribute == ParticleAttribute.SPRITE)
 		{
-			for (TimelineInteger t : emitter.getSpriteTimeline()) values.add((T) t.copy());
+			for (TimelineValue t : emitter.getSpriteTimeline()) values.add(t.copy());
 		}
 		else if (attribute == ParticleAttribute.SIZE)
 		{
-			for (TimelineFloat t : emitter.getSizeTimeline()) values.add((T) t.copy());
+			for (TimelineValue t : emitter.getSizeTimeline()) values.add(t.copy());
 		}
 		else if (attribute == ParticleAttribute.COLOUR)
 		{
-			for (TimelineFloat t : emitter.getColourTimeline()) values.add((T) t.copy());
+			for (TimelineValue t : emitter.getColourTimeline()) values.add(t.copy());
 		}
 		else if (attribute == ParticleAttribute.VELOCITY)
 		{
-			for (TimelineFloat t : emitter.getVelocityTimeline()) values.add((T) t.copy());
+			for (TimelineValue t : emitter.getVelocityTimeline()) values.add(t.copy());
 		}
 		
 		return values;
@@ -912,20 +911,20 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 		sortValues();
 		if (attribute == ParticleAttribute.SPRITE)
 		{
-			emitter.setSpriteTimeline((List<TimelineInteger>) values);
+			emitter.setSpriteTimeline((List<TimelineValue>) values);
 			emitter.reloadTextures();
 		}
 		else if (attribute == ParticleAttribute.SIZE)
 		{
-			emitter.setSizeTimeline((List<TimelineFloat>) values);
+			emitter.setSizeTimeline((List<TimelineValue>) values);
 		}
 		else if (attribute == ParticleAttribute.COLOUR)
 		{
-			emitter.setColourTimeline((List<TimelineFloat>) values);
+			emitter.setColourTimeline((List<TimelineValue>) values);
 		}
 		else if (attribute == ParticleAttribute.VELOCITY)
 		{
-			emitter.setVelocityTimeline((List<TimelineFloat>) values);
+			emitter.setVelocityTimeline((List<TimelineValue>) values);
 		}
 	}
 	
@@ -1001,19 +1000,19 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 		{
 			if (attribute == ParticleAttribute.SPRITE)
 			{
-				new TimelineSprite((TimelineInteger) values.get(selectedIndex), selectedIndex, (TimelinePanel<TimelineInteger>) this);
+				new TimelineSprite(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
 			}
 			else if (attribute == ParticleAttribute.SIZE)
 			{
-				new TimelineSize((TimelineFloat) values.get(selectedIndex), selectedIndex, (TimelinePanel<TimelineFloat>) this);
+				new TimelineSize(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
 			}
 			else if (attribute == ParticleAttribute.COLOUR)
 			{
-				new TimelineColour((TimelineFloat) values.get(selectedIndex), selectedIndex, (TimelinePanel<TimelineFloat>) this);
+				new TimelineColour(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
 			}
 			else if (attribute == ParticleAttribute.VELOCITY)
 			{
-				new TimelineVelocity((TimelineFloat) values.get(selectedIndex), selectedIndex, (TimelinePanel<TimelineFloat>) this);
+				new TimelineVelocity(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
 			}
 		}
 		else
@@ -1052,18 +1051,17 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 	public void mouseExited(MouseEvent e) {
 	}
 	
-	@SuppressWarnings("unchecked")
 	public void sortValues()
 	{
-		Collections.sort(values, new Comparator<T>(){
+		Collections.sort(values, new Comparator<TimelineValue>(){
 			@Override
-			public int compare(T o1, T o2) {
+			public int compare(TimelineValue o1, TimelineValue o2) {
 				return (int) ((o1.time - o2.time)*100);
 			}});
 		
 		for (int i = 0; i < values.size()-1; i++)
 		{
-			T t = values.get(i);
+			TimelineValue t = values.get(i);
 			if (t.interpolated)
 			{
 				t.setInterpolated(true, values.get(i+1));
@@ -1072,38 +1070,25 @@ class TimelinePanel<T extends TimelineValue> extends JPanel implements MouseList
 		values.get(values.size()-1).interpolated = false;
 	}
 	
-	@SuppressWarnings("unchecked")
-	public T getNewT(float time, int numValues)
+	public TimelineValue getNewT(float time, int numValues)
 	{
-		if (type == TimelineInteger.class)
-		{
-			Integer[] values = new Integer[numValues];
-			for (int i = 0; i < values.length; i++) values[i] = 0;
-			
-			return (T) new TimelineInteger(time, values);
-		}
-		else if (type == TimelineFloat.class)
-		{
-			Float[] values = new Float[numValues];
-			for (int i = 0; i < values.length; i++) values[i] = 0f;
-			
-			return (T) new TimelineFloat(time, values);
-		}
+		float[] values = new float[numValues];
+		for (int i = 0; i < values.length; i++) values[i] = 0f;
 		
-		return null;
+		return new TimelineValue(time, values);
 	}
 }
 
-abstract class TimelineFrame<T extends TimelineValue> extends JFrame
+abstract class TimelineFrame extends JFrame
 {
-	T value;
-	TimelinePanel<T> parent;
+	TimelineValue value;
+	TimelinePanel parent;
 	int index;
 	
 	JTextField time;
 	JCheckBox interpolated;
 	
-	public TimelineFrame(T value, int index, TimelinePanel<T> parent)
+	public TimelineFrame(TimelineValue value, int index, TimelinePanel parent)
 	{
 		this.value = value;
 		this.parent = parent;
@@ -1193,10 +1178,10 @@ abstract class TimelineFrame<T extends TimelineValue> extends JFrame
 	public abstract void apply();
 }
 
-class TimelineSprite extends TimelineFrame<TimelineInteger>
+class TimelineSprite extends TimelineFrame
 {
 	JComboBox<Integer> box;
-	public TimelineSprite(TimelineInteger value, int index, TimelinePanel<TimelineInteger> parent) {
+	public TimelineSprite(TimelineValue value, int index, TimelinePanel parent) {
 		super(value, index, parent);
 	}
 
@@ -1211,7 +1196,7 @@ class TimelineSprite extends TimelineFrame<TimelineInteger>
 			box = new JComboBox<Integer>(indexes);
 		}
 		
-		box.setSelectedIndex(value.values[0]);
+		box.setSelectedIndex((int) value.values[0]);
 		
 		panel.add(new JLabel("Sprite Index: "));
 		panel.add(box);
@@ -1221,11 +1206,11 @@ class TimelineSprite extends TimelineFrame<TimelineInteger>
 
 	public void copyPrevious()
 	{
-		TimelineInteger t = parent.values.get(index-1);
+		TimelineValue t = parent.values.get(index-1);
 		value.interpolated = t.interpolated;
 		value.values[0] = t.values[0];
 		
-		box.setSelectedIndex(value.values[0]);
+		box.setSelectedIndex((int) value.values[0]);
 	}
 	
 	public void apply()
@@ -1245,12 +1230,12 @@ class TimelineSprite extends TimelineFrame<TimelineInteger>
 
 }
 
-class TimelineColour extends TimelineFrame<TimelineFloat>
+class TimelineColour extends TimelineFrame
 {
 
 	JColorChooser colour;
-	public TimelineColour(TimelineFloat value, int index,
-			TimelinePanel<TimelineFloat> parent) {
+	public TimelineColour(TimelineValue value, int index,
+			TimelinePanel parent) {
 		super(value, index, parent);
 	}
 
@@ -1267,7 +1252,7 @@ class TimelineColour extends TimelineFrame<TimelineFloat>
 	
 	public void copyPrevious()
 	{
-		TimelineFloat t = parent.values.get(index-1);
+		TimelineValue t = parent.values.get(index-1);
 		value.interpolated = t.interpolated;
 		value.values[0] = t.values[0];
 		value.values[1] = t.values[1];
@@ -1300,13 +1285,13 @@ class TimelineColour extends TimelineFrame<TimelineFloat>
 	
 }
 
-class TimelineSize extends TimelineFrame<TimelineFloat>
+class TimelineSize extends TimelineFrame
 {
 
 	JTextField width;
 	JTextField height;
-	public TimelineSize(TimelineFloat value, int index,
-			TimelinePanel<TimelineFloat> parent) {
+	public TimelineSize(TimelineValue value, int index,
+			TimelinePanel parent) {
 		super(value, index, parent);
 	}
 
@@ -1317,9 +1302,9 @@ class TimelineSize extends TimelineFrame<TimelineFloat>
 		width = new JTextField(""+value.values[0], 4);
 		height = new JTextField(""+value.values[1], 4);
 		
-		panel.add(new JLabel("Size: "));
+		panel.add(new JLabel("Size: X:"));
 		panel.add(width);
-		panel.add(new JLabel(" X "));
+		panel.add(new JLabel(" Y:"));
 		panel.add(height);
 		
 		return panel;
@@ -1327,7 +1312,7 @@ class TimelineSize extends TimelineFrame<TimelineFloat>
 
 	@Override
 	public void copyPrevious() {
-		TimelineFloat t = parent.values.get(index-1);
+		TimelineValue t = parent.values.get(index-1);
 		value.interpolated = t.interpolated;
 		value.values[0] = t.values[0];
 		value.values[1] = t.values[1];
@@ -1368,14 +1353,14 @@ class TimelineSize extends TimelineFrame<TimelineFloat>
 	}
 }
 
-class TimelineVelocity extends TimelineFrame<TimelineFloat>
+class TimelineVelocity extends TimelineFrame
 {
 
 	JTextField x;
 	JTextField y;
 	JTextField z;
-	public TimelineVelocity(TimelineFloat value, int index,
-			TimelinePanel<TimelineFloat> parent) {
+	public TimelineVelocity(TimelineValue value, int index,
+			TimelinePanel parent) {
 		super(value, index, parent);
 	}
 
@@ -1397,7 +1382,7 @@ class TimelineVelocity extends TimelineFrame<TimelineFloat>
 
 	@Override
 	public void copyPrevious() {
-		TimelineFloat t = parent.values.get(index-1);
+		TimelineValue t = parent.values.get(index-1);
 		value.interpolated = t.interpolated;
 		value.values[0] = t.values[0];
 		value.values[1] = t.values[1];
@@ -1552,7 +1537,7 @@ class SpriteSelectorFrame extends JFrame
 		gc.gridx = 0;
 		gc.gridy++;
 		gc.gridwidth = 2;
-		if (name == null) name = new JTextField(emitter.atlasName, 7);
+		if (name == null) name = new JTextField(new File(emitter.atlasName).getName(), 7);
 		left.add(name, gc);
 		gc.gridwidth = 1;
 		
@@ -1644,6 +1629,95 @@ class SpriteSelectorFrame extends JFrame
 		gc.gridy++;
 		left.add(add, gc);
 		
+		JButton addMulti = new JButton("AddMulti");
+		addMulti.addActionListener(new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JFileChooser fc = new JFileChooser();
+				
+				fc.setSelectedFile(file);
+				
+				fc.setAcceptAllFileFilterUsed(false);
+				fc.setFileFilter(new FileFilter(){
+					@Override
+					public boolean accept(File f) {
+						if (f.isDirectory()) {
+					        return true;
+					    }
+						String extension = getExtension(f);
+						
+						if (extension != null && extension.equals("png")) return true;
+						
+						return false;
+					}
+
+					@Override
+					public String getDescription() {
+						return "PNG Files Only";
+					}
+				
+					public String getExtension(File f) {
+				        String ext = null;
+				        String s = f.getName();
+				        int i = s.lastIndexOf('.');
+
+				        if (i > 0 &&  i < s.length() - 1) {
+				            ext = s.substring(i+1).toLowerCase();
+				        }
+				        return ext;
+				    }
+				});
+				
+				int returnVal = fc.showOpenDialog(null);
+
+		        if (returnVal == JFileChooser.APPROVE_OPTION) {
+		            file = fc.getSelectedFile();
+		            
+		            int x = 1;
+		            int y = 1;
+		            String s = (String)JOptionPane.showInputDialog(
+		                                panel,
+		                                "X",
+		                                "",
+		                                JOptionPane.PLAIN_MESSAGE
+		                                );
+
+		            if ((s != null) && (s.length() > 0)) {
+		                x = Integer.parseInt(s);
+		            }
+		            
+		            s = (String)JOptionPane.showInputDialog(
+                            panel,
+                            "Y",
+                            "",
+                            JOptionPane.PLAIN_MESSAGE
+		            		);
+
+		            if ((s != null) && (s.length() > 0)) {
+		            	y = Integer.parseInt(s);
+		            }
+		            
+		            try {
+						BufferedImage image = ImageIO.read(file);
+						List<BufferedImage> list = ImageUtils.splitImage(image, x, y);
+						
+						images.addAll(list);
+						
+						selectedIndex = images.size()-1;
+						create();
+						
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+		        } else {
+		            
+		        }
+				
+			}});
+		
+		gc.gridx = 1;
+		left.add(addMulti, gc);
+		
 		JButton remove = new JButton("Remove");
 		remove.addActionListener(new ActionListener(){
 			@Override
@@ -1659,7 +1733,7 @@ class SpriteSelectorFrame extends JFrame
 				
 			}});
 		
-		gc.gridx = 1;
+		gc.gridx = 2;
 		left.add(remove, gc);
 		
 		JButton apply = new JButton("Apply");
@@ -1680,7 +1754,7 @@ class SpriteSelectorFrame extends JFrame
 				
 				packer.pack(Gdx.files.internal("data/atlases").file(), name.getText());
 				
-				emitter.atlasName = name.getText();
+				emitter.atlasName = "data/atlases/"+name.getText();
 				emitter.reloadTextures();
 				
 				main.renderer.spriteNum = i;
