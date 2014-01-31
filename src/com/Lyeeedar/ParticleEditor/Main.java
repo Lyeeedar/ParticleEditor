@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -56,6 +57,7 @@ import javax.swing.filechooser.FileFilter;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 import com.badlogic.gdx.backends.lwjgl.LwjglCanvas;
@@ -69,6 +71,8 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.tools.imagepacker.TexturePacker2;
 import com.badlogic.gdx.tools.imagepacker.TexturePacker2.Settings;
 import com.badlogic.gdx.utils.Json;
+import com.Lyeeedar.Graphics.Batchers.Batch;
+import com.Lyeeedar.Graphics.Batchers.ParticleEffectBatch;
 import com.Lyeeedar.Graphics.Lights.LightManager;
 import com.Lyeeedar.Graphics.Particles.ParticleEffect;
 import com.Lyeeedar.Graphics.Particles.ParticleEmitter;
@@ -210,7 +214,7 @@ public class Main extends JFrame {
 				renderer.currentEmitter = comboBox.getSelectedIndex();
 				right();
 				timeline();
-				renderer.spriteNum = FileUtils.deconstructAtlas(renderer.emitters.get(renderer.currentEmitter).atlas).length;
+				renderer.spriteNum = ImageUtils.deconstructAtlas(renderer.effect.getEmitter(renderer.currentEmitter).atlas).length;
 				
 			}});
 		
@@ -222,7 +226,7 @@ public class Main extends JFrame {
 				renderer.effect.addEmitter(emitter, 0, 0, 0);
 				right();
 				timeline();
-				renderer.spriteNum = FileUtils.deconstructAtlas(renderer.emitters.get(renderer.currentEmitter).atlas).length;
+				renderer.spriteNum = ImageUtils.deconstructAtlas(renderer.effect.getEmitter(renderer.currentEmitter).atlas).length;
 				
 			}});
 		
@@ -297,6 +301,7 @@ public class Main extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				renderer.effect.getEmitter(renderer.currentEmitter).calculateParticles();
 				mparticles.setText(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles);
+				renderer.effect.getEmitter(renderer.currentEmitter).reloadParticles();
 			}});
 		panel.add(autocalculate, gc);
 		gc.gridwidth = 1;
@@ -444,7 +449,7 @@ public class Main extends JFrame {
 				}
 				
 				try {
-					float f = 1/Float.parseFloat(emissionTime.getText());
+					float f = 1.0f/Float.parseFloat(emissionTime.getText());
 					if (pe.emissionTime != f) {
 						pe.emissionTime = f;
 					}
@@ -762,9 +767,10 @@ class Renderer implements ApplicationListener
 		
 		lightManager = new LightManager();
 
-		effect = new ParticleEffect(15);
+		effect = new ParticleEffect();
 		
 		ParticleEmitter emitter = getDefaultEmitter();
+		batches.put(ParticleEffectBatch.class, effectBatch);
 		
 		effect.addEmitter(emitter, 
 				0, 0f, 0);
@@ -772,7 +778,7 @@ class Renderer implements ApplicationListener
 		
 		currentEmitter = 0;
 		
-		spriteNum = FileUtils.deconstructAtlas(emitter.atlas).length;
+		spriteNum = ImageUtils.deconstructAtlas(emitter.atlas).length;
 		
 	}
 	
@@ -799,26 +805,22 @@ class Renderer implements ApplicationListener
         cam.update();
 	}
 
-	ArrayList<ParticleEmitter> emitters = new ArrayList<ParticleEmitter>();
+	ParticleEffectBatch effectBatch = new ParticleEffectBatch();
+	HashMap<Class, Batch> batches = new HashMap<Class, Batch>();
 	@Override
 	public void render() {
 		
-		Gdx.graphics.getGL20().glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		Gdx.graphics.getGL20().glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
 		Gdx.graphics.getGL20().glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 		
-		emitters.clear();
-		
+		Gdx.graphics.getGL20().glDisable(GL20.GL_CULL_FACE);
+				
 		effect.setPosition(0, -2, 10);
 		effect.update(Gdx.app.getGraphics().getDeltaTime(), cam);
-		effect.getVisibleEmitters(emitters, cam);
+		effect.queue(0, cam, batches);
 		
-		Collections.sort(emitters, ParticleEmitter.getComparator());
-
-		ParticleEmitter.begin(cam);
-		for (ParticleEmitter pe : emitters) pe.render();
-		ParticleEmitter.end();
+		effectBatch.render(cam);
 		
-		Gdx.graphics.getGL20().glDisable(GL20.GL_CULL_FACE);
 		Gdx.graphics.getGL20().glDisable(GL20.GL_DEPTH_TEST);
 		
 		batch.setColor(1, 1, 1, 1);
@@ -826,6 +828,17 @@ class Renderer implements ApplicationListener
 		batch.begin();
 		font.draw(batch, "Active Particles: "+effect.getActiveParticles(), 20, height-40);
 		batch.end();
+		
+		if (Gdx.input.isKeyPressed(Keys.UP))
+		{
+			cam.position.z += Gdx.graphics.getDeltaTime()*3;
+			cam.update();
+		}
+		if (Gdx.input.isKeyPressed(Keys.DOWN))
+		{
+			cam.position.z -= Gdx.graphics.getDeltaTime()*3;
+			cam.update();
+		}
 	}
 
 	@Override
@@ -1452,7 +1465,7 @@ class SpriteSelectorFrame extends JFrame
 		this.main = main;
 		
 		images = new ArrayList<BufferedImage>();
-		BufferedImage[] bu = FileUtils.deconstructAtlas(emitter.atlas);
+		BufferedImage[] bu = ImageUtils.deconstructAtlas(emitter.atlas);
 		for (BufferedImage b : bu) images.add(b);
 		
 		add(panel);
@@ -1521,7 +1534,7 @@ class SpriteSelectorFrame extends JFrame
 		            file = fc.getSelectedFile();
 		            
 		            images = new ArrayList<BufferedImage>();
-		    		BufferedImage[] bu = FileUtils.deconstructAtlas(new TextureAtlas(Gdx.files.getFileHandle(file.getAbsolutePath(), FileType.Absolute)));
+		    		BufferedImage[] bu = ImageUtils.deconstructAtlas(new TextureAtlas(Gdx.files.getFileHandle(file.getAbsolutePath(), FileType.Absolute)));
 		    		for (BufferedImage b : bu) images.add(b);
 		    		
 		    		name.setText(file.getName().replace(".atlas", ""));
