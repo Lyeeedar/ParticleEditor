@@ -134,26 +134,13 @@ public class Main extends JFrame {
 		
 		if (renderer.currentEmitter == -1) return;
 		
-		TimelinePanel spriteTimeline = new TimelinePanel(ParticleAttribute.SPRITE, renderer.effect.getEmitter(renderer.currentEmitter), this);
-		JScrollPane spriteScroll = new JScrollPane(spriteTimeline);
-		spriteScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-		
-		TimelinePanel sizeTimeline = new TimelinePanel(ParticleAttribute.SIZE, renderer.effect.getEmitter(renderer.currentEmitter), this);
-		JScrollPane sizeScroll = new JScrollPane(sizeTimeline);
-		sizeScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-		
-		TimelinePanel colourTimeline = new TimelinePanel(ParticleAttribute.COLOUR, renderer.effect.getEmitter(renderer.currentEmitter), this);
-		JScrollPane colourScroll = new JScrollPane(colourTimeline);
-		colourScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-		
-		TimelinePanel velocityTimeline = new TimelinePanel(ParticleAttribute.VELOCITY, renderer.effect.getEmitter(renderer.currentEmitter), this);
-		JScrollPane velocityScroll = new JScrollPane(velocityTimeline);
-		velocityScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-		
-		tabs.addTab("Sprite", spriteScroll);
-		tabs.addTab("Size", sizeScroll);
-		tabs.addTab("Colour", colourScroll);
-		tabs.addTab("Velocity", velocityScroll);
+		for (ParticleAttribute pa : ParticleAttribute.values())
+		{
+			TimelinePanel timeline = new TimelinePanel(pa, renderer.effect.getEmitter(renderer.currentEmitter), this);
+			JScrollPane scroll = new JScrollPane(timeline);
+			scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+			tabs.addTab(pa.toString(), scroll);
+		}
 		
 		bottom.revalidate();
 		bottom.repaint();
@@ -285,26 +272,26 @@ public class Main extends JFrame {
 		gc.gridx = 0;
 		gc.gridy = 0;
 		
-		gc.gridx = 0;
-		panel.add(new JLabel("Max Particles:"), gc);
-		
-		gc.gridx = 1;
-		final JTextField mparticles = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles, 4);
-		panel.add(mparticles, gc);
-		
-		gc.gridx = 0;
-		gc.gridy++;
-		gc.gridwidth = 2;
-		JButton autocalculate = new JButton("Automatically Calculate Max Particles");
-		autocalculate.addActionListener(new ActionListener(){
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				renderer.effect.getEmitter(renderer.currentEmitter).calculateParticles();
-				mparticles.setText(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles);
-				renderer.effect.getEmitter(renderer.currentEmitter).reloadParticles();
-			}});
-		panel.add(autocalculate, gc);
-		gc.gridwidth = 1;
+//		gc.gridx = 0;
+//		panel.add(new JLabel("Max Particles:"), gc);
+//		
+//		gc.gridx = 1;
+//		final JTextField mparticles = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles, 4);
+//		panel.add(mparticles, gc);
+//		
+//		gc.gridx = 0;
+//		gc.gridy++;
+//		gc.gridwidth = 2;
+//		JButton autocalculate = new JButton("Automatically Calculate Max Particles");
+//		autocalculate.addActionListener(new ActionListener(){
+//			@Override
+//			public void actionPerformed(ActionEvent e) {
+//				renderer.effect.getEmitter(renderer.currentEmitter).calculateParticles();
+//				mparticles.setText(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles);
+//				renderer.effect.getEmitter(renderer.currentEmitter).reloadParticles();
+//			}});
+//		panel.add(autocalculate, gc);
+//		gc.gridwidth = 1;
 		
 		gc.gridx = 0;
 		gc.gridy++;
@@ -316,37 +303,11 @@ public class Main extends JFrame {
 		
 		gc.gridx = 0;
 		gc.gridy++;
-		panel.add(new JLabel("Lifetime Start Var:"), gc);
+		panel.add(new JLabel("Duration:"), gc);
 		
 		gc.gridx = 1;
-		final JTextField lifetimeVar = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).particleLifetimeVar, 4);
-		panel.add(lifetimeVar, gc);
-		
-		gc.gridx = 0;
-		gc.gridy++;
-		panel.add(new JLabel("Particles/Second:"), gc);
-		
-		gc.gridx = 1;
-		final JTextField emissionTime = new JTextField(""+1/renderer.effect.getEmitter(renderer.currentEmitter).emissionTime, 4);
-		panel.add(emissionTime, gc);
-		
-		gc.gridx = 0;
-		gc.gridy++;
-		panel.add(new JLabel("Emission XYZ:"), gc);
-		
-		JPanel es = new JPanel();
-		
-		final JTextField emissionx = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).ex, 3);
-		es.add(emissionx);
-		
-		final JTextField emissiony = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).ey, 3);
-		es.add(emissiony);
-		
-		final JTextField emissionz = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).ez, 3);
-		es.add(emissionz);
-		
-		gc.gridx = 1;
-		panel.add(es, gc);
+		final JTextField duration = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).duration, 4);
+		panel.add(duration, gc);
 		
 		gc.gridx = 0;
 		gc.gridy++;
@@ -419,17 +380,7 @@ public class Main extends JFrame {
 				ParticleEmitter pe = renderer.effect.getEmitter(renderer.currentEmitter);
 				boolean mesh = false;
 				boolean tex = false;
-				
-				try {
-					int i = Integer.parseInt(mparticles.getText());
-					if (pe.maxParticles != i) {
-						pe.maxParticles = i;
-						mesh = true;
-					}
-				} catch (Exception argh){
-					mparticles.setText(""+pe.maxParticles);
-				}
-				
+								
 				try {
 					float f = Float.parseFloat(lifetime.getText());
 					if (pe.particleLifetime != f) {
@@ -440,48 +391,12 @@ public class Main extends JFrame {
 				}
 				
 				try {
-					float f = Float.parseFloat(lifetimeVar.getText());
-					if (pe.particleLifetimeVar != f) {
-						pe.particleLifetimeVar = f;
+					float f = Float.parseFloat(duration.getText());
+					if (pe.duration != f) {
+						pe.duration = f;
 					}
 				} catch (Exception argh){
-					lifetimeVar.setText(""+pe.particleLifetimeVar);
-				}
-				
-				try {
-					float f = 1.0f/Float.parseFloat(emissionTime.getText());
-					if (pe.emissionTime != f) {
-						pe.emissionTime = f;
-					}
-				} catch (Exception argh){
-					emissionTime.setText(""+pe.emissionTime);
-				}
-				
-				try {
-					float f = Float.parseFloat(emissionx.getText());
-					if (pe.ex != f) {
-						pe.ex = f;
-					}
-				} catch (Exception argh){
-					emissionx.setText(""+pe.ex);
-				}
-				
-				try {
-					float f = Float.parseFloat(emissiony.getText());
-					if (pe.ey != f) {
-						pe.ey = f;
-					}
-				} catch (Exception argh){
-					emissiony.setText(""+pe.ey);
-				}
-				
-				try {
-					float f = Float.parseFloat(emissionz.getText());
-					if (pe.ez != f) {
-						pe.ez = f;
-					}
-				} catch (Exception argh){
-					emissionz.setText(""+pe.ez);
+					duration.setText(""+pe.duration);
 				}
 				
 				try {
@@ -784,8 +699,8 @@ class Renderer implements ApplicationListener
 	
 	public ParticleEmitter getDefaultEmitter()
 	{
-		ParticleEmitter orb = new ParticleEmitter(2, 2, 0.01f, 1.0f, 1.0f, 1.0f, 0, GL20.GL_SRC_ALPHA, GL20.GL_ONE, "data/atlases/orb.atlas", "blank");
-		orb.createBasicEmitter(1, 1, new Color(0.7f, 0.7f, 0.7f, 1), new Color(0.4f, 0.4f, 0.4f, 1), 0, 1, 0);
+		ParticleEmitter orb = new ParticleEmitter(2, 10, GL20.GL_SRC_ALPHA, GL20.GL_ONE, "data/atlases/orb.atlas", "blank");
+		orb.createBasicEmitter(1, 1, new Color(0.7f, 0.7f, 0.7f, 1), 0, 1, 0);
 		orb.calculateParticles();
 		orb.create();
 		
@@ -898,22 +813,7 @@ class TimelinePanel extends JPanel implements MouseListener, MouseMotionListener
 	public ArrayList<TimelineValue> getValue()
 	{
 		ArrayList<TimelineValue> values = new ArrayList<TimelineValue>();
-		if (attribute == ParticleAttribute.SPRITE)
-		{
-			for (TimelineValue t : emitter.getSpriteTimeline()) values.add(t.copy());
-		}
-		else if (attribute == ParticleAttribute.SIZE)
-		{
-			for (TimelineValue t : emitter.getSizeTimeline()) values.add(t.copy());
-		}
-		else if (attribute == ParticleAttribute.COLOUR)
-		{
-			for (TimelineValue t : emitter.getColourTimeline()) values.add(t.copy());
-		}
-		else if (attribute == ParticleAttribute.VELOCITY)
-		{
-			for (TimelineValue t : emitter.getVelocityTimeline()) values.add(t.copy());
-		}
+		for (TimelineValue t : emitter.getTimeline(attribute)) values.add(t.copy());
 		
 		return values;
 	}
@@ -922,22 +822,15 @@ class TimelinePanel extends JPanel implements MouseListener, MouseMotionListener
 	public void writeValues()
 	{
 		sortValues();
+		emitter.setTimeline(attribute, (List<TimelineValue>) values);
 		if (attribute == ParticleAttribute.SPRITE)
 		{
-			emitter.setSpriteTimeline((List<TimelineValue>) values);
 			emitter.reloadTextures();
 		}
-		else if (attribute == ParticleAttribute.SIZE)
+		else if (attribute == ParticleAttribute.EMISSIONRATE)
 		{
-			emitter.setSizeTimeline((List<TimelineValue>) values);
-		}
-		else if (attribute == ParticleAttribute.COLOUR)
-		{
-			emitter.setColourTimeline((List<TimelineValue>) values);
-		}
-		else if (attribute == ParticleAttribute.VELOCITY)
-		{
-			emitter.setVelocityTimeline((List<TimelineValue>) values);
+			emitter.calculateParticles();
+			emitter.reloadParticles();
 		}
 	}
 	
@@ -1026,6 +919,22 @@ class TimelinePanel extends JPanel implements MouseListener, MouseMotionListener
 			else if (attribute == ParticleAttribute.VELOCITY)
 			{
 				new TimelineVelocity(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
+			}
+			else if (attribute == ParticleAttribute.EMISSIONRATE)
+			{
+				new TimelineEmissionRate(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
+			}
+			else if (attribute == ParticleAttribute.EMISSIONAREA)
+			{
+				new TimelineEmissionArea(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
+			}
+			else if (attribute == ParticleAttribute.EMISSIONTYPE)
+			{
+				new TimelineEmissionType(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
+			}
+			else if (attribute == ParticleAttribute.MASS)
+			{
+				new TimelineMass(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
 			}
 		}
 		else
@@ -1446,6 +1355,239 @@ class TimelineVelocity extends TimelineFrame
 	}
 }
 
+class TimelineEmissionRate extends TimelineFrame
+{
+	JTextField emission;
+	public TimelineEmissionRate(TimelineValue value, int index, TimelinePanel parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		JPanel panel = new JPanel();
+		
+		emission = new JTextField(""+value.values[0], 4);
+				
+		panel.add(new JLabel("Emission rate/second: "));
+		panel.add(emission);
+		
+		return panel;
+	}
+
+	public void copyPrevious()
+	{
+		TimelineValue t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = t.values[0];
+		
+		emission.setText(""+value.values[0]);
+	}
+	
+	public void apply()
+	{
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		};
+		
+		try {
+			float f = Float.parseFloat(emission.getText());
+			value.values[0] = f;
+		} catch (Exception wtf) {
+			emission.setText(""+value.values[0]);
+			return;
+		}
+		
+		value.interpolated = interpolated.isSelected();
+	}
+
+}
+
+class TimelineEmissionArea extends TimelineFrame
+{
+
+	JTextField x;
+	JTextField y;
+	JTextField z;
+	public TimelineEmissionArea(TimelineValue value, int index,
+			TimelinePanel parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		JPanel panel = new JPanel();
+		
+		x = new JTextField(""+value.values[0], 4);
+		y = new JTextField(""+value.values[1], 4);
+		z = new JTextField(""+value.values[2], 4);
+		
+		panel.add(new JLabel("Emission Area: "));
+		panel.add(x);
+		panel.add(y);
+		panel.add(z);
+		
+		return panel;
+	}
+
+	@Override
+	public void copyPrevious() {
+		TimelineValue t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = t.values[0];
+		value.values[1] = t.values[1];
+		value.values[2] = t.values[2];
+		
+		x.setText(""+value.values[0]);
+		y.setText(""+value.values[1]);
+		z.setText(""+value.values[2]);
+		
+	}
+
+	@Override
+	public void apply() {
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		}
+		
+		try {
+			float f = Float.parseFloat(x.getText());
+			value.values[0] = f;
+		} catch (Exception wtf) {
+			x.setText(""+value.values[0]);
+			return;
+		}
+		
+		try {
+			float f = Float.parseFloat(y.getText());
+			value.values[1] = f;
+		} catch (Exception wtf) {
+			y.setText(""+value.values[1]);
+			return;
+		}
+		
+		try {
+			float f = Float.parseFloat(z.getText());
+			value.values[2] = f;
+		} catch (Exception wtf) {
+			z.setText(""+value.values[2]);
+			return;
+		}
+
+		value.interpolated = interpolated.isSelected();
+		
+	}
+}
+
+class TimelineEmissionType extends TimelineFrame
+{
+	JTextField emission;
+	public TimelineEmissionType(TimelineValue value, int index, TimelinePanel parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		JPanel panel = new JPanel();
+		
+		emission = new JTextField(""+(int)value.values[0], 4);
+				
+		panel.add(new JLabel("Emission type: "));
+		panel.add(emission);
+		
+		return panel;
+	}
+
+	public void copyPrevious()
+	{
+		TimelineValue t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = (int)t.values[0];
+		
+		emission.setText(""+(int)value.values[0]);
+	}
+	
+	public void apply()
+	{
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		};
+		
+		try {
+			int f = Integer.parseInt(emission.getText());
+			value.values[0] = f;
+		} catch (Exception wtf) {
+			emission.setText(""+(int)value.values[0]);
+			return;
+		}
+		
+		value.interpolated = interpolated.isSelected();
+	}
+
+}
+
+class TimelineMass extends TimelineFrame
+{
+	JTextField mass;
+	public TimelineMass(TimelineValue value, int index, TimelinePanel parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		JPanel panel = new JPanel();
+		
+		mass = new JTextField(""+value.values[0], 4);
+				
+		panel.add(new JLabel("Mass: "));
+		panel.add(mass);
+		
+		return panel;
+	}
+
+	public void copyPrevious()
+	{
+		TimelineValue t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = t.values[0];
+		
+		mass.setText(""+value.values[0]);
+	}
+	
+	public void apply()
+	{
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		};
+		
+		try {
+			float f = Float.parseFloat(mass.getText());
+			value.values[0] = f;
+		} catch (Exception wtf) {
+			mass.setText(""+value.values[0]);
+			return;
+		}
+		
+		value.interpolated = interpolated.isSelected();
+	}
+
+}
+
 class SpriteSelectorFrame extends JFrame
 {
 	ParticleEmitter emitter;
@@ -1537,7 +1679,7 @@ class SpriteSelectorFrame extends JFrame
 		    		BufferedImage[] bu = ImageUtils.deconstructAtlas(new TextureAtlas(Gdx.files.getFileHandle(file.getAbsolutePath(), FileType.Absolute)));
 		    		for (BufferedImage b : bu) images.add(b);
 		    		
-		    		name.setText(file.getName().replace(".atlas", ""));
+		    		name.setText(file.getName());
 		    		
 		    		create();
 		    		
