@@ -272,27 +272,6 @@ public class Main extends JFrame {
 		gc.gridx = 0;
 		gc.gridy = 0;
 		
-//		gc.gridx = 0;
-//		panel.add(new JLabel("Max Particles:"), gc);
-//		
-//		gc.gridx = 1;
-//		final JTextField mparticles = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles, 4);
-//		panel.add(mparticles, gc);
-//		
-//		gc.gridx = 0;
-//		gc.gridy++;
-//		gc.gridwidth = 2;
-//		JButton autocalculate = new JButton("Automatically Calculate Max Particles");
-//		autocalculate.addActionListener(new ActionListener(){
-//			@Override
-//			public void actionPerformed(ActionEvent e) {
-//				renderer.effect.getEmitter(renderer.currentEmitter).calculateParticles();
-//				mparticles.setText(""+renderer.effect.getEmitter(renderer.currentEmitter).maxParticles);
-//				renderer.effect.getEmitter(renderer.currentEmitter).reloadParticles();
-//			}});
-//		panel.add(autocalculate, gc);
-//		gc.gridwidth = 1;
-		
 		gc.gridx = 0;
 		gc.gridy++;
 		panel.add(new JLabel("Max Lifetime:"), gc);
@@ -300,14 +279,6 @@ public class Main extends JFrame {
 		gc.gridx = 1;
 		final JTextField lifetime = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).particleLifetime, 4);
 		panel.add(lifetime, gc);
-		
-		gc.gridx = 0;
-		gc.gridy++;
-		panel.add(new JLabel("Duration:"), gc);
-		
-		gc.gridx = 1;
-		final JTextField duration = new JTextField(""+renderer.effect.getEmitter(renderer.currentEmitter).duration, 4);
-		panel.add(duration, gc);
 		
 		gc.gridx = 0;
 		gc.gridy++;
@@ -385,18 +356,10 @@ public class Main extends JFrame {
 					float f = Float.parseFloat(lifetime.getText());
 					if (pe.particleLifetime != f) {
 						pe.particleLifetime = f;
+						mesh = true;
 					}
 				} catch (Exception argh){
 					lifetime.setText(""+pe.particleLifetime);
-				}
-				
-				try {
-					float f = Float.parseFloat(duration.getText());
-					if (pe.duration != f) {
-						pe.duration = f;
-					}
-				} catch (Exception argh){
-					duration.setText(""+pe.duration);
 				}
 				
 				try {
@@ -416,7 +379,11 @@ public class Main extends JFrame {
 				pe.blendFuncSRC = getBlendMode((String) SRCBlend.getSelectedItem());
 				pe.blendFuncDST = getBlendMode((String) DSTBlend.getSelectedItem());
 				
-				if (mesh) pe.reloadParticles();
+				if (mesh) 
+				{
+					pe.calculateParticles();
+					pe.reloadParticles();
+				}
 				if (tex) pe.reloadTextures();
 			}});
 		
@@ -724,6 +691,8 @@ class Renderer implements ApplicationListener
 	HashMap<Class, Batch> batches = new HashMap<Class, Batch>();
 	@Override
 	public void render() {
+		
+		effect.play(true);
 		
 		Gdx.graphics.getGL20().glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
 		Gdx.graphics.getGL20().glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
