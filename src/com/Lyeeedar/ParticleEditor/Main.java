@@ -723,6 +723,27 @@ class Renderer implements ApplicationListener
 			cam.position.z -= Gdx.graphics.getDeltaTime()*3;
 			cam.update();
 		}
+		if (Gdx.input.isKeyPressed(Keys.LEFT))
+		{
+			cam.position.x += Gdx.graphics.getDeltaTime()*3;
+			cam.update();
+		}
+		if (Gdx.input.isKeyPressed(Keys.RIGHT))
+		{
+			cam.position.x -= Gdx.graphics.getDeltaTime()*3;
+			cam.update();
+		}
+		if (Gdx.input.isKeyPressed(Keys.PAGE_UP))
+		{
+			cam.position.y += Gdx.graphics.getDeltaTime()*3;
+			cam.update();
+		}
+		if (Gdx.input.isKeyPressed(Keys.PAGE_DOWN))
+		{
+			cam.position.y -= Gdx.graphics.getDeltaTime()*3;
+			cam.update();
+		}
+
 	}
 
 	@Override
@@ -904,6 +925,10 @@ class TimelinePanel extends JPanel implements MouseListener, MouseMotionListener
 			else if (attribute == ParticleAttribute.MASS)
 			{
 				new TimelineMass(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
+			}
+			else if (attribute == ParticleAttribute.ROTATIONTYPE)
+			{
+				new TimelineRotationType(values.get(selectedIndex), selectedIndex, (TimelinePanel) this);
 			}
 		}
 		else
@@ -1557,6 +1582,57 @@ class TimelineMass extends TimelineFrame
 
 }
 
+class TimelineRotationType extends TimelineFrame
+{
+	JTextField emission;
+	public TimelineRotationType(TimelineValue value, int index, TimelinePanel parent) {
+		super(value, index, parent);
+	}
+
+	@Override
+	public JPanel getPanel() {
+		JPanel panel = new JPanel();
+		
+		emission = new JTextField(""+(int)value.values[0], 4);
+				
+		panel.add(new JLabel("Rotation type: "));
+		panel.add(emission);
+		
+		return panel;
+	}
+
+	public void copyPrevious()
+	{
+		TimelineValue t = parent.values.get(index-1);
+		value.interpolated = t.interpolated;
+		value.values[0] = (int)t.values[0];
+		
+		emission.setText(""+(int)value.values[0]);
+	}
+	
+	public void apply()
+	{
+		try {
+			float f = Float.parseFloat(time.getText());
+			value.time = f;
+		} catch (Exception wtf) {
+			time.setText(""+value.time);
+			return;
+		};
+		
+		try {
+			int f = Integer.parseInt(emission.getText());
+			value.values[0] = f;
+		} catch (Exception wtf) {
+			emission.setText(""+(int)value.values[0]);
+			return;
+		}
+		
+		value.interpolated = interpolated.isSelected();
+	}
+
+}
+
 class SpriteSelectorFrame extends JFrame
 {
 	ParticleEmitter emitter;
@@ -1866,8 +1942,6 @@ class SpriteSelectorFrame extends JFrame
 			public void actionPerformed(ActionEvent e) {
 				
 				if (images.size() == 0) return;
-				
-				FileUtils.unloadAtlases();
 				
 				TexturePacker2 packer = new TexturePacker2(new File(""), new Settings());
 				
