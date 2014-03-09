@@ -67,6 +67,7 @@ import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.tools.imagepacker.TexturePacker2;
 import com.badlogic.gdx.tools.imagepacker.TexturePacker2.Settings;
@@ -79,6 +80,8 @@ import com.Lyeeedar.Graphics.Particles.ParticleEmitter;
 import com.Lyeeedar.Graphics.Particles.ParticleEmitter.ParticleAttribute;
 import com.Lyeeedar.Graphics.Particles.ParticleEmitter.TimelineValue;
 import com.Lyeeedar.Graphics.Particles.ParticleEmitter.TimelineValue;
+import com.Lyeeedar.Pirates.GLOBALS;
+import com.Lyeeedar.Util.Controls;
 import com.Lyeeedar.Util.FileUtils;
 import com.Lyeeedar.Util.ImageUtils;
 
@@ -655,6 +658,8 @@ public class Main extends JFrame {
 
 	class Renderer implements ApplicationListener
 	{
+		Controls controls;
+		
 		BitmapFont font;
 		SpriteBatch batch;
 		PerspectiveCamera cam;
@@ -666,10 +671,19 @@ public class Main extends JFrame {
 
 		int width;
 		int height;
+		
+		float dist = 5;
+		float Xangle = 0;
+		float Yangle = 0;
+		
+		Vector3 tmp = new Vector3();
 
 		@Override
 		public void create() {
 
+			controls = new Controls(false);
+			Gdx.input.setInputProcessor(controls.ip);
+			
 			font = new BitmapFont();
 			batch = new SpriteBatch();
 
@@ -707,10 +721,20 @@ public class Main extends JFrame {
 			this.height = height;
 
 			cam = new PerspectiveCamera(75, width, height);
-			cam.position.set(0, 0, 0);
-			cam.lookAt(0, 0, 10);
 			cam.near = 1.0f;
 			cam.far = 100f;
+			
+			cam.direction.set(GLOBALS.DEFAULT_ROTATION);
+			cam.direction.rotate(Xangle, 0, 1, 0);
+			Yrotate(Yangle);
+			
+			if (cam.direction.isZero(0.01f)) cam.direction.set(GLOBALS.DEFAULT_ROTATION);
+			
+			if (cam.direction.isZero(0.01f)) cam.direction.set(GLOBALS.DEFAULT_ROTATION);
+			
+			tmp.set(cam.direction).scl(-1*dist);
+			cam.position.set(tmp);
+			
 			cam.update();
 		}
 
@@ -724,7 +748,6 @@ public class Main extends JFrame {
 
 			Gdx.graphics.getGL20().glDisable(GL20.GL_CULL_FACE);
 
-			effect.setPosition(0, -2, 10);
 			effect.update(Gdx.app.getGraphics().getDeltaTime(), cam);
 			effect.queue(0, cam, batches);
 
@@ -740,38 +763,49 @@ public class Main extends JFrame {
 			batch.begin();
 			font.draw(batch, "Active Particles: "+effect.getActiveParticles(), 20, height-40);
 			batch.end();
-
+			
 			if (Gdx.input.isKeyPressed(Keys.UP))
 			{
-				cam.position.z += Gdx.graphics.getDeltaTime()*3;
-				cam.update();
+				dist -= Gdx.graphics.getDeltaTime() * 10;
 			}
+			
 			if (Gdx.input.isKeyPressed(Keys.DOWN))
 			{
-				cam.position.z -= Gdx.graphics.getDeltaTime()*3;
-				cam.update();
-			}
-			if (Gdx.input.isKeyPressed(Keys.LEFT))
-			{
-				cam.position.x += Gdx.graphics.getDeltaTime()*3;
-				cam.update();
-			}
-			if (Gdx.input.isKeyPressed(Keys.RIGHT))
-			{
-				cam.position.x -= Gdx.graphics.getDeltaTime()*3;
-				cam.update();
-			}
-			if (Gdx.input.isKeyPressed(Keys.PAGE_UP))
-			{
-				cam.position.y += Gdx.graphics.getDeltaTime()*3;
-				cam.update();
-			}
-			if (Gdx.input.isKeyPressed(Keys.PAGE_DOWN))
-			{
-				cam.position.y -= Gdx.graphics.getDeltaTime()*3;
-				cam.update();
+				dist += Gdx.graphics.getDeltaTime() * 10;
 			}
 
+			if (Gdx.input.isTouched())
+			{
+				Xangle -= controls.getDeltaX();
+				//Yangle -= controls.getDeltaY();
+			}
+			
+			dist += controls.scrolled();
+			dist = MathUtils.clamp(dist, 5, 50);
+			
+			if (Yangle > 60) Yangle = 60;
+			if (Yangle < -60) Yangle = -60;
+			
+			cam.direction.set(GLOBALS.DEFAULT_ROTATION);
+			cam.direction.rotate(Xangle, 0, 1, 0);
+			Yrotate(Yangle);
+			
+			if (cam.direction.isZero(0.01f)) cam.direction.set(GLOBALS.DEFAULT_ROTATION);
+			
+			tmp.set(cam.direction).scl(-1*dist);
+			cam.position.set(tmp);
+			
+			cam.update();
+		}
+		
+		public void Yrotate (float angle) {	
+			Vector3 dir = tmp.set(cam.direction).nor();
+			if(dir.y>-0.7 && angle<0 || dir.y<+0.7 && angle>0)
+			{
+				Vector3 localAxisX = dir;
+				localAxisX.crs(cam.up).nor();
+				cam.rotate(angle, localAxisX.x, localAxisX.y, localAxisX.z);
+			}
 		}
 
 		@Override
@@ -780,6 +814,7 @@ public class Main extends JFrame {
 
 		@Override
 		public void resume() {
+			Gdx.input.setInputProcessor(controls.ip);
 		}
 
 		@Override
